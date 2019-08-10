@@ -1,3 +1,3 @@
 fn main() {
-    yew::start_app::<CenDash::Model>();
+    yew::start_app::<cendash::Model>();
 }
