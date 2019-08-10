@@ -1,22 +1,29 @@
-#![recursion_limit = "512"]
+#![recursion_limit = "768"]
+
 
 #[macro_use]
 extern crate stdweb;
 
+#[macro_use]
+extern crate serde_derive;
+
+
 use failure::Error;
-use yew::format::nothing::Nothing;
 use std::time::Duration;
-use yew::services::fetch::{FetchService, Request, Response};
-use yew::services::{ConsoleService, IntervalService, Task, TimeoutService};
-use yew::{html, ChangeData, Callback, Component, ComponentLink, Html, Renderable, ShouldRender};
-// use stdweb::unstable::TryFrom;
-// use yew::events::ChangeData;
-// use yew::services::reader::{File, FileChunk, FileData, ReaderService, ReaderTask};
-// use yew::virtual_dom::VNode;
-// use std::fs::read_to_string;
+use yew::format::nothing::Nothing;
+use yew::format::Json;
+use yew::services::{
+    fetch::{FetchService, Request, Response},
+    ConsoleService, IntervalService, Task, StorageService // TimeoutService, DialogService,
+};
+use yew::{
+    html, ChangeData, Callback, Component, ComponentLink, Html, Renderable, ShouldRender
+};
+use yew::services::storage::Area;
 
 
 const INVENTORY_FILE: &'static str = "/inventory";
+const DATASTORE_BROWSER_ID: &'static str = "cendash-data-store";
 
 
 pub struct Model {
