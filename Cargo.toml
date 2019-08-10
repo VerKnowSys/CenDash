@@ -5,8 +5,8 @@ authors = ["Daniel (dmilith) Dettlaff <dmilith@me.com>"]
 edition = "2018"
 
 [dependencies]
-yew = "0.7"
-stdweb = "0.4.2"
+yew = {"version" = "0.7", features = []}
+stdweb = "0.4"
 failure = "0.1"
 serde = "1"
 serde_derive = "1"
