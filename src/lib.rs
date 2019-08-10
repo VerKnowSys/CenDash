@@ -112,7 +112,7 @@ impl Component for Model {
     fn create(_: Self::Properties, mut link: ComponentLink<Self>) -> Self {
         let mut interval = IntervalService::new();
         let callback_onload = link.send_back(|_| Msg::InventoryLoad);
-        let job_onload = interval.spawn(Duration::from_secs(1), callback_onload);
+        let job_onload = interval.spawn(Duration::from_secs(0), callback_onload);
 
         Model {
             // timeout: TimeoutService::new(),
