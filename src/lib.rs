@@ -69,9 +69,37 @@ pub enum Msg {
     Deploy,
     SetGitRef(String),
     SetOrUnsetHost(ChangeData),
+    InventoryFetching,
     InventoryLoad,
     InventoryLoaded(String),
-    InventoryFetching,
+    StoreData,
+    RestoreData,
+}
+
+
+impl Model {
+
+
+    /// store current state in browser:
+    fn store_state(&mut self) {
+        let data_to_store = Json(&self.data);
+        self
+            .local_storage
+            .store(DATASTORE_BROWSER_ID, data_to_store);
+    }
+
+
+    /// load last state from browser:
+    fn restore_state(&mut self) {
+        match self.local_storage.restore(DATASTORE_BROWSER_ID) {
+            Json(Ok(data)) => {
+                self.data = data;
+                self.console.log(&format!("Restored data: {:?}", self.data))
+            },
+            Json(Err(_)) => self.data = CenDashData::default(),
+        }
+    }
+
 }
 
 
@@ -134,7 +162,7 @@ impl Component for Model {
             }
 
             Msg::InventoryLoaded(data) => {
-                self.inventory
+                self.data.inventory
                     = data
                         .split("\n")
                         .filter(|line| !line.starts_with("[") && line != &"\n" && line.len() > 0)
@@ -150,8 +178,10 @@ impl Component for Model {
                         .data
                         .inventory
                         .clone();
-                self.console.info(&format!("Inventory loaded with {} hosts!", self.inventory.len()));
-                self.console.debug(&format!("Inventory data: {:?}", data));
+
+                self.restore_state(); // restore last state of the UI
+
+                self.console.info(&format!("Inventory loaded with {} hosts!", self.data.inventory.len()));
                 self.job = None;
                 self.job_onload = None; // disable job_onload after initial call
             }
@@ -225,12 +255,24 @@ impl Component for Model {
                     }
                 }
             }
+
+            Msg::StoreData => {
+                self.store_state();
+                self.console.log(&format!("Stored app state!"));
+            }
+
+            Msg::RestoreData => {
+                self.restore_state();
+                self.console.log(&format!("Restored app state!"));
+            }
+
         }
         true
     }
 }
 
 impl Renderable<Model> for Model {
+
     fn view(&self) -> Html<Self> {
         let view_message = |message| {
             html! { <p>{ message }</p> }
