@@ -29,13 +29,14 @@ const DATASTORE_BROWSER_ID: &'static str = "cendash-data-store";
 pub struct Model {
     link: ComponentLink<Model>,
 
-    timeout: TimeoutService,
+    // timeout: TimeoutService,
     interval: IntervalService,
     console: ConsoleService,
     fetch_service: FetchService,
+    local_storage: StorageService,
 
-    callback_tick: Callback<()>,
-    callback_done: Callback<()>,
+    callback_deploy: Callback<()>,
+    // callback_done: Callback<()>,
 
     job: Option<Box<dyn Task>>,
     job_onload: Option<Box<dyn Task>>,
@@ -62,10 +63,11 @@ pub struct CenDashData {
 
 }
 
+
 pub enum Msg {
     Abort,
     Done,
-    InvokeProcess,
+    DeploySteps,
     Deploy,
     SetGitRef(String),
     SetOrUnsetHost(ChangeData),
@@ -113,10 +115,12 @@ impl Component for Model {
         let job_onload = interval.spawn(Duration::from_secs(1), callback_onload);
 
         Model {
-            timeout: TimeoutService::new(),
+            // timeout: TimeoutService::new(),
+            fetch_service: FetchService::new(),
+            local_storage: StorageService::new(Area::Local), // or Area::Session
             console: ConsoleService::new(),
-            callback_tick: link.send_back(|_| Msg::InvokeProcess),
-            callback_done: link.send_back(|_| Msg::Done),
+            callback_deploy: link.send_back(|_| Msg::DeploySteps),
+            // callback_done: link.send_back(|_| Msg::Done),
             interval,
             link,
 
@@ -223,16 +227,16 @@ impl Component for Model {
                 self.job = None;
             }
 
-            Msg::InvokeProcess => {
+            Msg::DeploySteps => {
                 self.data.messages.push(format!("DeploySteps!"));
                 self.console.count_named(&format!("DeploySteps GitRef: {}", self.data.gitref));
                 // Job's done:
-                {
-                    let handle = self
-                        .timeout
-                        .spawn(Duration::from_secs(3), self.callback_done.clone());
-                    self.job = Some(Box::new(handle));
-                }
+                // {
+                //     let handle = self
+                //         .timeout
+                //         .spawn(Duration::from_secs(3), self.callback_done.clone());
+                //     self.job = Some(Box::new(handle));
+                // }
             }
 
             Msg::SetGitRef(gitref) => {
@@ -279,9 +283,16 @@ impl Renderable<Model> for Model {
         };
         let has_job = self.job.is_some();
 
-        let select_option = |option| {
+        let selected_option = |option| {
             html! {
                 <option selected=true>
+                    { option }
+                </option>
+            }
+        };
+        let unselected_option = |option| {
+            html! {
+                <option selected=false>
                     { option }
                 </option>
             }
@@ -342,15 +353,33 @@ impl Renderable<Model> for Model {
                         </select>
                     </pre>
                     <pre>
-                        <button disabled=has_job onclick=|_| Msg::Deploy>{ "Deploy!" }
+                        <button
+                            disabled=has_job
+                            onclick=|_| Msg::StoreData>{ "Store-Data" }
                         </button>
                     </pre>
                     <pre>
-                        <button disabled=!has_job onclick=|_| Msg::Abort>{ "Abort!" }
+                        <button
+                            disabled=has_job
+                            onclick=|_| Msg::RestoreData>{ "Restore-Data" }
                         </button>
                     </pre>
                     <pre>
-                        <button disabled=has_job onclick=|_| Msg::InventoryLoad>{ "Reload inventory" }
+                        <button
+                            disabled=has_job
+                            onclick=|_| Msg::Deploy>{ "Deploy!" }
+                        </button>
+                    </pre>
+                    <pre>
+                        <button
+                            disabled=!has_job
+                            onclick=|_| Msg::Abort>{ "Abort!" }
+                        </button>
+                    </pre>
+                    <pre>
+                        <button
+                            disabled=has_job
+                            onclick=|_| Msg::InventoryLoad>{ "Reload-Inventory" }
                         </button>
                     </pre>
                 </span>
