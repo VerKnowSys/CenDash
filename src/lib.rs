@@ -330,7 +330,15 @@ impl Renderable<Model> for Model {
                             multiple=true
                             onchange=|option| Msg::SetOrUnsetHost(option)
                         >
-                            { for self.hosts_all.iter().map(select_option) }
+                            { // handle selected/ unselected items on multi-list
+                                for self.data.hosts_all.iter().map(|option| {
+                                    if self.data.hosts_picked.contains(option) {
+                                        selected_option(option)
+                                    } else {
+                                        unselected_option(option)
+                                    }
+                                })
+                            }
                         </select>
                     </pre>
                     <pre>
