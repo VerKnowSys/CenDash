@@ -40,11 +40,26 @@ pub struct Model {
     job: Option<Box<dyn Task>>,
     job_onload: Option<Box<dyn Task>>,
 
-    messages: Vec<&'static str>,
-    hosts_all: Vec<String>,
-    hosts_picked: Vec<String>,
-    gitref: String,
-    inventory: Vec<String>,
+    // serializable data
+    data: CenDashData,
+}
+
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CenDashData {
+
+    pub gitref: String,
+
+    pub messages: Vec<String>,
+
+    pub hosts_all: Vec<String>,
+
+    pub hosts_picked: Vec<String>,
+
+    pub inventory: Vec<String>,
+
+    pub logs: Vec<String>,
+
 }
 
 pub enum Msg {
@@ -80,12 +95,7 @@ impl Component for Model {
             job: None,
             job_onload: Some(Box::new(job_onload)),
 
-            gitref: String::new(),
-            messages: Vec::new(),
-            inventory: Vec::new(),
-            hosts_all: Vec::new(),
-            hosts_picked: Vec::new(),
-            fetch_service: FetchService::new(),
+            data: CenDashData::default(),
         }
     }
 
@@ -130,12 +140,14 @@ impl Component for Model {
                         .filter(|line| !line.starts_with("[") && line != &"\n" && line.len() > 0)
                         .map(|line| line.split(" ").take(1).collect::<String>())
                         .collect();
-                self.hosts_all
+                self.data.hosts_all
                     = self
+                        .data
                         .inventory
                         .clone();
-                self.hosts_picked
+                self.data.hosts_picked
                     = self
+                        .data
                         .inventory
                         .clone();
                 self.console.info(&format!("Inventory loaded with {} hosts!", self.inventory.len()));
@@ -145,21 +157,21 @@ impl Component for Model {
             }
 
             Msg::Deploy => {
-                if self.gitref.len() > 3
-                && self.inventory.len() > 0 {
+                if self.data.gitref.len() > 3
+                && self.data.inventory.len() > 0 {
                     let handle
                         = self
                             .interval
-                            .spawn(Duration::from_millis(300), self.callback_tick.clone());
+                            .spawn(Duration::from_millis(300), self.callback_deploy.clone());
                     self.job = Some(Box::new(handle));
 
-                    self.messages.clear();
+                    self.data.messages.clear();
                     self.console.clear();
-                    self.console.log(&format!("GitRef: {}", &self.gitref));
-                    self.console.log(&format!("Picked hosts: {:?}", &self.hosts_picked));
+                    self.console.log(&format!("GitRef: {}", &self.data.gitref));
+                    self.console.log(&format!("Picked hosts: {:?}", &self.data.hosts_picked));
 
                 } else {
-                    self.messages.push("No GitRef given!");
+                    self.data.messages.push(format!("No GitRef given!"));
                 }
             }
 
@@ -167,13 +179,13 @@ impl Component for Model {
                 if let Some(mut task) = self.job.take() {
                     task.cancel();
                 }
-                self.messages.push("Aborted!");
-                self.console.warn("Aborted!");
+                self.data.messages.push(format!("Aborted!"));
+                self.console.warn(&format!("Aborted!"));
                 self.console.assert(self.job.is_none(), "Job still exists!");
             }
 
             Msg::Done => {
-                self.messages.push("Done!");
+                self.data.messages.push(format!("Done!"));
                 self.console.info("Done!");
                 // self.console.group();
                 // self.console.time_named_end("Timer");
@@ -182,8 +194,8 @@ impl Component for Model {
             }
 
             Msg::InvokeProcess => {
-                self.messages.push("InvokeProcess!");
-                self.console.count_named(&format!("InvokeProcess GitRef: {}", self.gitref));
+                self.data.messages.push(format!("DeploySteps!"));
+                self.console.count_named(&format!("DeploySteps GitRef: {}", self.data.gitref));
                 // Job's done:
                 {
                     let handle = self
@@ -194,14 +206,14 @@ impl Component for Model {
             }
 
             Msg::SetGitRef(gitref) => {
-                self.gitref = gitref.to_string();
+                self.data.gitref = gitref.to_string();
             }
 
             Msg::SetOrUnsetHost(data) => {
                 match data {
                     ChangeData::Select(hosts) => {
-                        self.hosts_picked = hosts.selected_values();
-                        self.console.log(&format!("Hosts Select(hosts): {:?}", self.hosts_picked));
+                        self.data.hosts_picked = hosts.selected_values();
+                        self.console.log(&format!("Hosts Select(hosts): {:?}", self.data.hosts_picked));
                     }
 
                     ChangeData::Value(host) => {
@@ -257,15 +269,15 @@ impl Renderable<Model> for Model {
                             autofocus=true
                             required=true
                             placeholder="Git-ref (tag, branch or sha1)"
-                            value=&self.gitref
+                            value=&self.data.gitref
                             oninput=|element| Msg::SetGitRef(element.value)
                         />
                     </pre>
                     <pre>
                         { "Selected: " }
-                        { self.hosts_picked.len() }
+                        { self.data.hosts_picked.len() }
                         { " of: " }
-                        { self.hosts_all.len() }
+                        { self.data.hosts_all.len() }
                         { " hosts in total."}
                     </pre>
                     <pre>
@@ -294,7 +306,7 @@ impl Renderable<Model> for Model {
                 </span>
 
                 <content>
-                    { for self.messages.iter().map(view_message) }
+                    { for self.data.messages.iter().map(view_message) }
                 </content>
             </article>
         }
