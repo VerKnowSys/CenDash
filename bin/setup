@@ -1,0 +1,5 @@
+#!/bin/sh
+
+rustup update
+rustup override set nightly
+cargo install --force cargo-web wasm-pack

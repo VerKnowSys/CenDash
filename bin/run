@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# NOTE: sccache causes issues with cargo-web
+unset RUSTC_WRAPPER
+
+cargo web start

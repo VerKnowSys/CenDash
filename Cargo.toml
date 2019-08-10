@@ -1,0 +1,12 @@
+[package]
+name = "CenDash"
+version = "0.1.0"
+authors = ["Daniel (dmilith) Dettlaff <dmilith@me.com>"]
+edition = "2018"
+
+[dependencies]
+yew = "0.7"
+stdweb = "0.4.2"
+failure = "0.1"
+serde = "1"
+serde_derive = "1"
