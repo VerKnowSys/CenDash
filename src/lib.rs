@@ -52,6 +52,8 @@ pub struct CenDashData {
 
     pub gitref: String,
 
+    pub filter_content: String,
+
     pub messages: Vec<String>,
 
     pub hosts_all: Vec<String>,
@@ -77,6 +79,7 @@ pub enum Msg {
     InventoryLoaded(String),
     StoreData,
     RestoreData,
+    SetContentFilter(String),
 }
 
 
@@ -249,6 +252,19 @@ impl Component for Model {
 
             Msg::SetGitRef(gitref) => {
                 self.data.gitref = gitref.to_string();
+                self.console.log(&format!("SetGitRef: {}", self.data.gitref));
+
+                // reload inventory automatically:
+                self.job_onload = self.autoload_inventory();
+            }
+
+            Msg::SetContentFilter(filter) => {
+                self.data.filter_content = filter.to_string();
+                self.store_state();
+                self.console.log(&format!("SetContentFilter: {}", self.data.filter_content));
+
+                // reload inventory automatically:
+                self.job_onload = self.autoload_inventory();
             }
 
             Msg::SetOrUnsetHost(data) => {
@@ -361,15 +377,24 @@ impl Renderable<Model> for Model {
                         </select>
                     </pre>
                     <pre>
-                        <button
-                            disabled=has_job
-                            onclick=|_| Msg::StoreData>{ "Store-Data" }
-                        </button>
+                        <label>
+                            { "Filter hosts: " }
+                        </label>
+                        <input
+                            name="filter_content"
+                            type="find"
+                            size="32"
+                            placeholder="Filter hosts by content"
+                            value=&self.data.filter_content
+                            oninput=|element| Msg::SetContentFilter(element.value)
+                        />
                     </pre>
                     <pre>
                         <button
-                            disabled=has_job
-                            onclick=|_| Msg::RestoreData>{ "Restore-Data" }
+                            onclick=|_| Msg::StoreData>{ "Store-State" }
+                        </button>
+                        { "  " }
+                        <button
                         </button>
                     </pre>
                     <pre>
@@ -377,8 +402,7 @@ impl Renderable<Model> for Model {
                             disabled=has_job
                             onclick=|_| Msg::Deploy>{ "Deploy!" }
                         </button>
-                    </pre>
-                    <pre>
+                        { "  " }
                         <button
                             disabled=!has_job
                             onclick=|_| Msg::Abort>{ "Abort!" }
