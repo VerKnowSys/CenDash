@@ -100,9 +100,14 @@ impl Model {
         match self.local_storage.restore(DATASTORE_BROWSER_ID) {
             Json(Ok(data)) => {
                 self.data = data;
-                self.console.log(&format!("Restored data: {:?}", self.data))
+                self.console.log(&format!("Restored app state!"));
             },
-            Json(Err(_)) => self.data = CenDashData::default(),
+
+            Json(Err(_)) => {
+                // self.store_state();
+                // self.data = CenDashData::default();
+                self.console.log(&format!("No app state!"))
+            },
         }
     }
 
