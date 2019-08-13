@@ -30,7 +30,7 @@ const DATASTORE_BROWSER_ID: &'static str = "cendash-data-store";
 pub struct Model {
     link: ComponentLink<Model>,
 
-    // timeout: TimeoutService,
+    timeout: TimeoutService,
     interval: IntervalService,
     console: ConsoleService,
     fetch_service: FetchService,
@@ -142,7 +142,7 @@ impl Component for Model {
         let job_onload = interval.spawn(Duration::from_secs(0), callback_onload);
 
         Model {
-            // timeout: TimeoutService::new(),
+            timeout: TimeoutService::new(),
             fetch_service: FetchService::new(),
             local_storage: StorageService::new(Area::Local), // or Area::Session
             console: ConsoleService::new(),
@@ -170,7 +170,7 @@ impl Component for Model {
                     = self
                         .link
                         .send_back(
-                            |response: Response<Result<String, Error>>| {
+                            move |response: Response<Result<String, Error>>| {
                                 let (meta, data) = response.into_parts();
                                 let inventory_data = data.unwrap_or_default();
                                 if meta.status.is_success() {
@@ -185,7 +185,8 @@ impl Component for Model {
                     = self
                         .fetch_service
                         .fetch(request, callback);
-                self.job = Some(Box::new(handle));
+                self
+                    .job = Some(Box::new(handle));
             }
 
             Msg::InventoryFetching => {
@@ -223,8 +224,7 @@ impl Component for Model {
             }
 
             Msg::Deploy => {
-                if self.data.gitref.len() > 3
-                && self.data.inventory.len() > 0 {
+                if self.data.gitref.len() > 3 { // && self.data.inventory.len() > 0
                     let handle
                         = self
                             .interval
@@ -234,10 +234,10 @@ impl Component for Model {
                     self.data.messages.clear();
                     self.console.clear();
                     self.console.log(&format!("GitRef: {}", &self.data.gitref));
-                    self.console.log(&format!("Picked hosts: {:?}", &self.data.hosts_picked));
+                    // self.console.log(&format!("Picked hosts: {:?}", &self.data.hosts_picked));
 
                 } else {
-                    self.data.messages.push(format!("No GitRef given!"));
+                    self.data.messages.push(format!("Wrong GitRef given!"));
                 }
             }
 
@@ -313,12 +313,10 @@ impl Component for Model {
 
             Msg::StoreData => {
                 self.store_state();
-                self.console.log(&format!("Stored app state!"));
             }
 
             Msg::RestoreData => {
                 self.restore_state();
-                self.console.log(&format!("Restored app state!"));
             }
 
         }
@@ -330,7 +328,11 @@ impl Renderable<Model> for Model {
 
     fn view(&self) -> Html<Self> {
         let view_message = |message| {
-            html! { <p>{ message }</p> }
+            html! {
+                <p>
+                    { message }
+                </p>
+            }
         };
         let has_job = self.job.is_some();
 
@@ -441,7 +443,6 @@ impl Renderable<Model> for Model {
                     </pre>
                     <pre>
                         <button
-                            disabled=has_job
                             onclick=|_| Msg::InventoryLoad>{ "Reload-Inventory" }
                         </button>
                     </pre>
