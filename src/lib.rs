@@ -14,7 +14,7 @@ use yew::format::nothing::Nothing;
 use yew::format::Json;
 use yew::services::{
     fetch::{FetchService, Request, Response},
-    ConsoleService, IntervalService, Task, StorageService // TimeoutService, DialogService,
+    ConsoleService, IntervalService, Task, StorageService, TimeoutService //, DialogService,
 };
 use yew::{
     html, ChangeData, Callback, Component, ComponentLink, Html, Renderable, ShouldRender
@@ -92,6 +92,9 @@ impl Model {
         self
             .local_storage
             .store(DATASTORE_BROWSER_ID, data_to_store);
+        self
+            .console
+            .log(&format!("Stored state data"));
     }
 
 
@@ -110,6 +113,21 @@ impl Model {
             },
         }
     }
+
+
+    /// schedule inventory reloading:
+    fn autoload_inventory(&mut self) -> Option<Box<Task>> {
+        let callback_onload
+            = self
+                .link
+                .send_back(|_| Msg::InventoryLoad);
+        let job_onload
+            = self
+                .interval
+                .spawn(Duration::from_millis(500), callback_onload);
+        Some(Box::new(job_onload))
+    }
+
 
 }
 
@@ -199,8 +217,6 @@ impl Component for Model {
                         .inventory
                         .clone();
 
-                self.restore_state(); // restore last state of the UI
-
                 self.console.info(&format!("Inventory loaded with {} hosts!", self.data.inventory.len()));
                 self.job = None;
                 self.job_onload = None; // disable job_onload after initial call
@@ -231,12 +247,14 @@ impl Component for Model {
                 }
                 self.data.messages.push(format!("Aborted!"));
                 self.console.warn(&format!("Aborted!"));
-                self.console.assert(self.job.is_none(), "Job still exists!");
+                self.store_state();
+                // self.console.assert(self.job.is_none(), "Job still exists!");
             }
 
             Msg::Done => {
                 self.data.messages.push(format!("Done!"));
                 self.console.info("Done!");
+                self.store_state();
                 // self.console.group();
                 // self.console.time_named_end("Timer");
                 // self.console.group_end();
@@ -246,7 +264,9 @@ impl Component for Model {
             Msg::DeploySteps => {
                 self.data.messages.push(format!("DeploySteps!"));
                 self.console.count_named(&format!("DeploySteps GitRef: {}", self.data.gitref));
-                // Job's done:
+                self.store_state();
+
+                // // Job's done:
                 // {
                 //     let handle = self
                 //         .timeout
@@ -257,6 +277,7 @@ impl Component for Model {
 
             Msg::SetGitRef(gitref) => {
                 self.data.gitref = gitref.to_string();
+                self.store_state();
                 self.console.log(&format!("SetGitRef: {}", self.data.gitref));
 
                 // reload inventory automatically:
@@ -276,7 +297,8 @@ impl Component for Model {
                 match data {
                     ChangeData::Select(hosts) => {
                         self.data.hosts_picked = hosts.selected_values();
-                        self.console.log(&format!("Hosts Select(hosts): {:?}", self.data.hosts_picked));
+                        self.store_state();
+                        self.console.log(&format!("Hosts Selected: {}", self.data.hosts_picked.len()));
                     }
 
                     ChangeData::Value(host) => {
@@ -363,6 +385,9 @@ impl Renderable<Model> for Model {
                         { " hosts in total."}
                     </pre>
                     <pre>
+                        <label>
+                            { "List of hosts: " }
+                        </label>
                         <select
                             name="hosts"
                             size="42"
@@ -400,6 +425,7 @@ impl Renderable<Model> for Model {
                         </button>
                         { "  " }
                         <button
+                            onclick=|_| Msg::RestoreData>{ "Restore-State" }
                         </button>
                     </pre>
                     <pre>
