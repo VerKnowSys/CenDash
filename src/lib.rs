@@ -20,6 +20,7 @@ use yew::{
     html, ChangeData, Callback, Component, ComponentLink, Html, Renderable, ShouldRender
 };
 use yew::services::storage::Area;
+use regex::Regex;
 
 
 const INVENTORY_FILE: &'static str = "/inventory";
@@ -169,7 +170,14 @@ impl Component for Model {
                 self.data.inventory
                     = data
                         .split("\n")
-                        .filter(|line| !line.starts_with("[") && line != &"\n" && line.len() > 0)
+                        .filter(|line| {
+                            let regex = Regex::new(&self.data.filter_content).unwrap();
+                            regex.is_match(&line)
+                            && !line.is_empty()
+                            && !line.starts_with(&"[")
+                            && !line.ends_with(&"]")
+                            && line != &"\n"
+                        })
                         .map(|line| line.split(" ").take(1).collect::<String>())
                         .collect();
                 self.data.hosts_all
